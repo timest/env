@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	DEFAULT_SEPARATOR = "_"
+	defaultSep = "_"
 )
 
 func upper(v string) string {
@@ -19,7 +19,7 @@ func upper(v string) string {
 
 func Fill(v interface{}) error {
 	if reflect.ValueOf(v).Kind() != reflect.Ptr {
-		return fmt.Errorf("env.Fill 只接受指针类型的值")
+		return fmt.Errorf("only the pointer to a struct is supported")
 	}
 	ind := reflect.Indirect(reflect.ValueOf(v))
 	prefix := upper(ind.Type().Name())
@@ -30,9 +30,9 @@ func Fill(v interface{}) error {
 	return nil
 }
 
-func combine(p, n string, v string, ok bool) string{
+func combine(p, n string, v string, ok bool) string {
 	if !ok {
-		return p + DEFAULT_SEPARATOR + n
+		return p + defaultSep + n
 	}
 	return p + v + n
 }
@@ -44,7 +44,7 @@ func parseBool(v string) (bool, error) {
 	return strconv.ParseBool(v)
 }
 
-func fill(pf string, ind reflect.Value) error{
+func fill(pf string, ind reflect.Value) error {
 	for i := 0; i < ind.NumField(); i++ {
 		f := ind.Type().Field(i)
 		name := f.Name
@@ -75,12 +75,13 @@ func parse(prefix string, f reflect.Value, sf reflect.StructField) error {
 	df := sf.Tag.Get("default")
 	isRequire, err := parseBool(sf.Tag.Get("require"))
 	if err != nil {
-		return fmt.Errorf("字段:%s require不是合法的布尔值，支持: 1 t T true TRUE True.", prefix)
+		return fmt.Errorf("the value of %s is not a valid `member` of bool ，only "+
+			"[1 0 t f T F true false TRUE FALSE True False] are supported", prefix)
 	}
 	ev, exist := os.LookupEnv(prefix)
 
 	if !exist && isRequire {
-		return fmt.Errorf("%s 是必须的变量，但没有被设置", prefix)
+		return fmt.Errorf("%s is required, but has not been set", prefix)
 	}
 	if !exist && df != "" {
 		ev = df
@@ -122,13 +123,13 @@ func parse(prefix string, f reflect.Value, sf reflect.StructField) error {
 		}
 		f.SetUint(uiv)
 	case reflect.Float32:
-		f32, err := strconv.ParseFloat(ev,  32)
+		f32, err := strconv.ParseFloat(ev, 32)
 		if err != nil {
 			return err
 		}
 		f.SetFloat(f32)
 	case reflect.Float64:
-		f64, err := strconv.ParseFloat(ev,  64)
+		f64, err := strconv.ParseFloat(ev, 64)
 		if err != nil {
 			return err
 		}
