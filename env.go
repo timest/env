@@ -3,7 +3,6 @@ package env
 import (
 	"reflect"
 	"strings"
-	"log"
 	"strconv"
 	"os"
 	"fmt"
@@ -20,13 +19,8 @@ func upper(v string) string {
 
 func Fill(v interface{}) error {
 	if reflect.ValueOf(v).Kind() != reflect.Ptr {
-		return fmt.Errorf("Fill只接受指针类型的值")
+		return fmt.Errorf("env.Fill 只接受指针类型的值")
 	}
-	//for _, v := range os.Environ() {
-	//	if strings.HasPrefix(v, "CONFIG") {
-	//		log.Print(v)
-	//	}
-	//}
 	ind := reflect.Indirect(reflect.ValueOf(v))
 	prefix := upper(ind.Type().Name())
 	err := fill(prefix, ind)
@@ -77,7 +71,7 @@ func fill(pf string, ind reflect.Value) error{
 }
 
 func parse(prefix string, f reflect.Value, sf reflect.StructField) error {
-	log.Print("parse:", prefix, f.String(), f.Type().String(), f.Kind().String())
+	//log.Print("parse:", prefix, f.String(), f.Type().String(), f.Kind().String())
 	df := sf.Tag.Get("default")
 	isRequire, err := parseBool(sf.Tag.Get("require"))
 	if err != nil {
@@ -91,10 +85,10 @@ func parse(prefix string, f reflect.Value, sf reflect.StructField) error {
 	if !exist && df != "" {
 		ev = df
 	}
-	log.Print("ev:", ev)
+	//log.Print("ev:", ev)
 	switch f.Kind() {
 	case reflect.String:
-		f.SetString(df)
+		f.SetString(ev)
 	case reflect.Int:
 		iv, err := strconv.ParseInt(ev, 10, 32)
 		if err != nil {
@@ -145,6 +139,80 @@ func parse(prefix string, f reflect.Value, sf reflect.StructField) error {
 			return err
 		}
 		f.SetBool(b)
+	case reflect.Slice:
+		sep := ";"
+		s, exist := sf.Tag.Lookup("slice_sep")
+		if exist && s != "" {
+			sep = s
+		}
+		vals := strings.Split(ev, sep)
+		switch f.Type() {
+		case reflect.TypeOf([]string{}):
+			f.Set(reflect.ValueOf(vals))
+		case reflect.TypeOf([]int{}):
+			t := make([]int, len(vals))
+			for i, v := range vals {
+				val, err := strconv.ParseInt(v, 10, 32)
+				if err != nil {
+					return err
+				}
+				t[i] = int(val)
+			}
+		case reflect.TypeOf([]int64{}):
+			t := make([]int64, len(vals))
+			for i, v := range vals {
+				val, err := strconv.ParseInt(v, 10, 64)
+				if err != nil {
+					return err
+				}
+				t[i] = val
+			}
+		case reflect.TypeOf([]uint{}):
+			t := make([]uint, len(vals))
+			for i, v := range vals {
+				val, err := strconv.ParseUint(v, 10, 32)
+				if err != nil {
+					return err
+				}
+				t[i] = uint(val)
+			}
+		case reflect.TypeOf([]uint64{}):
+			t := make([]uint64, len(vals))
+			for i, v := range vals {
+				val, err := strconv.ParseUint(v, 10, 64)
+				if err != nil {
+					return err
+				}
+				t[i] = val
+			}
+		case reflect.TypeOf([]float32{}):
+			t := make([]float32, len(vals))
+			for i, v := range vals {
+				val, err := strconv.ParseFloat(v, 32)
+				if err != nil {
+					return err
+				}
+				t[i] = float32(val)
+			}
+		case reflect.TypeOf([]float64{}):
+			t := make([]float64, len(vals))
+			for i, v := range vals {
+				val, err := strconv.ParseFloat(v, 64)
+				if err != nil {
+					return err
+				}
+				t[i] = val
+			}
+		case reflect.TypeOf([]bool{}):
+			t := make([]bool, len(vals))
+			for i, v := range vals {
+				val, err := parseBool(v)
+				if err != nil {
+					return err
+				}
+				t[i] = val
+			}
+		}
 	}
 	return nil
 }
