@@ -1,4 +1,5 @@
 # env
+This lib is used for dealing with environment variables in Golang .
 
 ```
 CONFIG_APP=ENVAPP
